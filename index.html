@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Revive Belford</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --label: #000000;
+  --label2: rgba(60,60,67,0.6);
+  --label3: rgba(60,60,67,0.3);
+  --sep: rgba(60,60,67,0.18);
+  --fill: rgba(120,120,128,0.16);
+  --fill2: rgba(120,120,128,0.08);
+  --blue: #007AFF;
+  --green: #34C759;
+  --orange: #FF9500;
+  --red: #FF3B30;
+  --gray: #8E8E93;
+  --r: 12px;
+}
+
+html, body {
+  height: 100%; overflow: hidden;
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--label);
+}
+
+/* ─── Nav Bar ─────────────────────────────────── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 52px;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgba(242,242,247,0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 0.5px solid var(--sep);
+  display: flex; align-items: center; justify-content: space-between;
+  padding-left: 16px; padding-right: 16px; gap: 8px;
+}
+
+.nav-logo { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; }
+.nav-sub  { font-size: 11px; color: var(--label2); letter-spacing: 0.2px; }
+
+.nav-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.nav-pill {
+  background: var(--blue); color: #fff;
+  font-size: 13px; font-weight: 600;
+  padding: 5px 13px; border-radius: 20px;
+  letter-spacing: -0.2px; cursor: default;
+}
+
+.nav-btn {
+  background: rgba(120,120,128,0.14); color: var(--label);
+  border: none; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  padding: 5px 12px; cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.nav-btn:active { opacity: 0.5; }
+
+.online-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gray); flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+#sync-btn.syncing { opacity: 0.55; pointer-events: none; }
+
+/* ─── Main ────────────────────────────────────── */
+.main {
+  position: fixed;
+  top: 52px; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px 16px;
+  transition: right 0.45s cubic-bezier(0.32,0.72,0,1);
+}
+
+/* ─── Site Map Card ───────────────────────────── */
+.map-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 18px 20px 14px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.07), 0 0 0 0.5px var(--sep);
+  width: 100%; max-width: 920px;
+}
+.map-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.map-meta-label { font-size: 12px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.6px; }
+.map-meta-addr  { font-size: 12px; color: var(--label2); }
+.map-hint { font-size: 12px; color: var(--label3); text-align: center; margin-top: 10px; }
+#site-svg { width: 100%; display: block; overflow: visible; }
+
+/* ─── SVG Buildings ───────────────────────────── */
+.bldg-group { cursor: pointer; }
+.bldg-rect { rx:5; ry:5; stroke-width:1.5; transition: filter 0.2s ease; }
+.bldg-group:hover .bldg-rect { filter: brightness(1.12) saturate(1.3) drop-shadow(0 0 6px var(--glow-color,#aaa)); }
+.bldg-group.selected .bldg-rect { filter: brightness(0.93) saturate(1.4) drop-shadow(0 0 10px var(--glow-color,#aaa)); stroke-width:2.5; }
+.bldg-text {
+  font-family: -apple-system, sans-serif; font-size:10px; font-weight:700;
+  fill:rgba(0,0,0,0.65); pointer-events:none;
+  text-anchor:middle; dominant-baseline:middle; letter-spacing:-0.3px;
+}
+.map-annotation { font-family:-apple-system,sans-serif; font-size:8px; font-weight:600; fill:#AEAEB2; letter-spacing:1.2px; text-anchor:middle; pointer-events:none; }
+.map-annotation-side { font-size:8px; font-weight:600; fill:#AEAEB2; letter-spacing:1px; text-anchor:middle; pointer-events:none; }
+
+/* ─── Backdrop ────────────────────────────────── */
+.backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  pointer-events: none; opacity: 0;
+  background: rgba(0,0,0,0.12);
+  transition: opacity 0.3s ease;
+}
+.backdrop.on { pointer-events: all; opacity: 1; }
+
+/* ─── Bottom Sheet ────────────────────────────── */
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -2px 30px rgba(0,0,0,0.1);
+  transform: translateY(105%);
+  transition: transform 0.45s cubic-bezier(0.32,0.72,0,1);
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.sheet.open { transform: translateY(0); }
+
+@media (min-width: 768px) and (orientation: landscape) {
+  .sheet { left:auto; top:52px; bottom:0; right:0; width:380px; max-height:none; border-radius:0; box-shadow:-2px 0 30px rgba(0,0,0,0.08); transform:translateX(105%); }
+  .sheet.open { transform:translateX(0); }
+  .main.shifted { right:380px; }
+  .sheet-handle { display:none; }
+}
+
+.sheet-handle { width:36px; height:4px; background:var(--sep); border-radius:2px; margin:10px auto 0; flex-shrink:0; }
+
+/* ─── Sheet Header ────────────────────────────── */
+.sheet-head { padding:14px 20px 12px; border-bottom:0.5px solid var(--sep); flex-shrink:0; }
+.sheet-head-row1 { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+.sheet-title { font-size:26px; font-weight:700; letter-spacing:-0.5px; line-height:1.1; }
+.sheet-sub   { font-size:14px; color:var(--label2); margin-top:3px; }
+.type-badge  { font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:0.8px; text-transform:uppercase; margin-top:3px; }
+.close-btn   { width:28px; height:28px; border-radius:50%; background:var(--fill); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--gray); font-size:13px; font-weight:600; -webkit-tap-highlight-color:transparent; flex-shrink:0; margin-left:10px; }
+.close-btn:active { opacity:0.5; }
+
+.progress-row { display:flex; align-items:center; gap:14px; }
+.ring-wrap { position:relative; flex-shrink:0; width:58px; height:58px; }
+.ring-wrap svg { position:absolute; inset:0; }
+.ring-val { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+.progress-details { flex:1; }
+.progress-track { height:6px; background:var(--fill); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+.progress-fill  { height:100%; border-radius:3px; background:var(--blue); transition:width 0.5s ease; }
+.stat-chips { display:flex; gap:6px; }
+.stat-chip { flex:1; text-align:center; background:var(--fill2); border-radius:8px; padding:6px 4px; }
+.stat-chip-val { font-size:15px; font-weight:700; }
+.stat-chip-lbl { font-size:9px; color:var(--label2); text-transform:uppercase; letter-spacing:0.4px; margin-top:1px; }
+
+/* ─── Tasks ───────────────────────────────────── */
+.tasks-bar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px 8px; flex-shrink:0; }
+.tasks-bar-lbl { font-size:12px; font-weight:600; color:var(--label2); text-transform:uppercase; letter-spacing:0.5px; }
+.tasks-add-btn { font-size:15px; font-weight:500; color:var(--blue); background:none; border:none; cursor:pointer; padding:0; -webkit-tap-highlight-color:transparent; }
+.tasks-add-btn:active { opacity:0.5; }
+.tasks-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 12px 16px; }
+.tasks-scroll::-webkit-scrollbar { display:none; }
+
+.task-cell { background:var(--card); border-radius:12px; margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.06),0 0 0 0.5px var(--sep); overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.1s ease; }
+.task-cell:active { transform:scale(0.985); }
+.task-row { display:flex; align-items:center; padding:13px 14px; gap:12px; min-height:54px; }
+.task-icon { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; color:white; font-weight:800; }
+.task-info { flex:1; min-width:0; }
+.task-name { font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task-meta-txt { font-size:12px; color:var(--label2); margin-top:2px; }
+.task-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.task-bar { width:52px; height:4px; background:var(--fill); border-radius:2px; overflow:hidden; }
+.task-bar-fill { height:100%; border-radius:2px; transition:width 0.4s; }
+.task-pct { font-size:13px; font-weight:700; min-width:34px; text-align:right; }
+.task-chevron { font-size:11px; color:var(--label3); transition:transform 0.22s ease; }
+.task-cell.open .task-chevron { transform:rotate(90deg); }
+
+.task-detail { padding:0 14px 14px; border-top:0.5px solid var(--sep); display:none; }
+.task-cell.open .task-detail { display:block; }
+.det-label { font-size:11px; font-weight:600; color:var(--label2); text-transform:uppercase; letter-spacing:0.5px; margin:12px 0 8px; display:block; }
+
+.slider-row { display:flex; align-items:center; gap:12px; margin-bottom:2px; }
+input[type=range] { -webkit-appearance:none; flex:1; height:5px; border-radius:3px; outline:none; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:white; box-shadow:0 1px 8px rgba(0,0,0,0.22),0 0 0 0.5px rgba(0,0,0,0.1); cursor:pointer; transition:transform 0.1s; }
+input[type=range]:active::-webkit-slider-thumb { transform:scale(1.15); }
+.slider-pct { font-size:18px; font-weight:700; color:var(--blue); min-width:46px; text-align:right; }
+
+.status-row { display:flex; gap:6px; }
+.s-chip { flex:1; text-align:center; padding:6px 4px; border-radius:20px; font-size:11px; font-weight:600; border:1.5px solid var(--fill); background:var(--fill2); color:var(--label2); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:all 0.18s; }
+.s-chip:active { opacity:0.6; }
+.s-chip.s-ns.active  { border-color:var(--gray);   color:var(--gray);   background:rgba(142,142,147,0.1); }
+.s-chip.s-ip.active  { border-color:var(--blue);   color:var(--blue);   background:rgba(0,122,255,0.08); }
+.s-chip.s-done.active{ border-color:var(--green);  color:var(--green);  background:rgba(52,199,89,0.1); }
+.s-chip.s-hold.active{ border-color:var(--orange); color:var(--orange); background:rgba(255,149,0,0.1); }
+
+textarea.task-notes { width:100%; background:var(--fill2); border:none; border-radius:10px; padding:10px 12px; font-size:14px; font-family:inherit; color:var(--label); resize:none; outline:none; -webkit-appearance:none; margin-top:4px; }
+textarea.task-notes::placeholder { color:var(--label3); }
+
+/* ─── Photos in task ──────────────────────────── */
+.photos-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.photo-thumb { position:relative; width:72px; height:72px; border-radius:8px; overflow:hidden; flex-shrink:0; cursor:pointer; }
+.photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.photo-del { position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; background:rgba(0,0,0,0.55); border:none; color:white; font-size:11px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; }
+.photo-del:active { opacity:0.6; }
+.photo-add-label { display:inline-flex; align-items:center; gap:6px; margin-top:8px; cursor:pointer; padding:8px 14px; background:var(--fill2); border-radius:20px; font-size:13px; font-weight:500; color:var(--blue); -webkit-tap-highlight-color:transparent; }
+.photo-add-label:active { opacity:0.6; }
+.photo-add-label input { display:none; }
+.photo-count-badge { display:inline-block; font-size:11px; background:var(--fill); color:var(--label2); border-radius:10px; padding:1px 7px; margin-left:4px; vertical-align:middle; }
+
+/* ─── Photo Viewer ────────────────────────────── */
+.photo-viewer { position:fixed; inset:0; z-index:900; background:rgba(0,0,0,0.92); display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+.photo-viewer.on { display:flex; }
+.photo-viewer img { max-width:95vw; max-height:80vh; border-radius:8px; object-fit:contain; }
+.photo-viewer-close { position:absolute; top:16px; right:16px; width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.15); border:none; color:white; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.photo-viewer-close:active { opacity:0.6; }
+
+/* ─── Overlays (generic modal) ────────────────── */
+.overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.35); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:none; align-items:flex-end; justify-content:center; padding-bottom:env(safe-area-inset-bottom,0px); }
+.overlay.on { display:flex; }
+.modal { background:var(--card); border-radius:16px 16px 0 0; padding:24px 20px 32px; width:100%; max-width:480px; }
+.modal-ttl { font-size:18px; font-weight:700; text-align:center; margin-bottom:20px; }
+.modal-sub { font-size:14px; color:var(--label2); text-align:center; margin:-10px 0 18px; line-height:1.5; }
+.m-field { margin-bottom:12px; }
+.m-field label { font-size:12px; font-weight:600; color:var(--label2); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:5px; }
+.m-input, .m-select { width:100%; background:var(--fill2); border:none; border-radius:10px; padding:12px 14px; font-size:16px; font-family:inherit; color:var(--label); outline:none; -webkit-appearance:none; }
+.m-input:focus, .m-select:focus { background:var(--fill); }
+.m-select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23AEAEB2' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
+.m-btns { display:flex; gap:10px; margin-top:20px; }
+.m-btn { flex:1; padding:14px; border-radius:12px; border:none; font-size:16px; font-weight:600; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.m-btn:active { opacity:0.65; }
+.m-btn-ghost   { background:var(--fill);  color:var(--label); }
+.m-btn-primary { background:var(--blue);  color:white; }
+.m-btn-primary:disabled { background:var(--fill); color:var(--label3); pointer-events:none; }
+
+/* confirm-input highlight */
+#confirm-input.ok { background:rgba(52,199,89,0.12); color:var(--green); font-weight:700; }
+
+/* ─── Backups View ────────────────────────────── */
+.backups-view { position:fixed; inset:0; z-index:400; background:var(--bg); display:none; flex-direction:column; }
+.backups-view.on { display:flex; }
+.backups-nav { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; background:rgba(242,242,247,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-bottom:0.5px solid var(--sep); flex-shrink:0; padding-top:calc(16px + env(safe-area-inset-top,0px)); }
+.backups-title { font-size:20px; font-weight:700; }
+.backups-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px; }
+.backups-scroll::-webkit-scrollbar { display:none; }
+.backup-card { background:var(--card); border-radius:14px; margin-bottom:12px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.06),0 0 0 0.5px var(--sep); }
+.backup-card-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px; border-bottom:0.5px solid var(--sep); }
+.backup-time { font-size:14px; font-weight:600; }
+.backup-site-pct { font-size:13px; font-weight:700; color:var(--blue); }
+.backup-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:0; }
+.backup-bldg-cell { padding:10px 6px; text-align:center; border-right:0.5px solid var(--sep); border-bottom:0.5px solid var(--sep); }
+.backup-bldg-cell:nth-child(5n) { border-right:none; }
+.backup-bldg-n   { font-size:11px; font-weight:600; color:var(--label2); }
+.backup-bldg-pct { font-size:14px; font-weight:700; margin-top:2px; }
+.backups-empty { padding:48px 20px; text-align:center; color:var(--label2); line-height:1.6; }
+
+/* ─── Export modal tabs ───────────────────────── */
+.exp-tabs { display:flex; gap:6px; margin-bottom:18px; }
+.exp-tab { flex:1; padding:9px; text-align:center; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:1.5px solid var(--sep); background:var(--fill2); color:var(--label2); transition:all 0.15s; -webkit-tap-highlight-color:transparent; }
+.exp-tab.active { border-color:var(--blue); color:var(--blue); background:rgba(0,122,255,0.07); }
+
+.exp-panel { display:none; }
+.exp-panel.active { display:block; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <!-- Westland W mark -->
+    <svg viewBox="0 0 88 72" width="32" height="26" fill="#F5BC00" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <polygon points="0,0 16,0 44,70 29,70"/>
+      <polygon points="24,0 40,0 44,70 38,70"/>
+      <polygon points="48,0 64,0 50,70 44,70"/>
+      <polygon points="72,0 88,0 59,70 44,70"/>
+    </svg>
+    <div>
+      <div class="nav-logo">Revive Belford</div>
+      <div class="nav-sub">6818 &amp; 6988 Ash St, Vancouver</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="online-dot" id="online-dot" title="Offline"></div>
+    <button class="nav-btn" id="sync-btn" onclick="syncData()">Sync</button>
+    <button class="nav-btn" onclick="openBackupsView()">Backups</button>
+    <button class="nav-btn" onclick="openExportModal()">Export</button>
+    <div class="nav-pill" id="nav-pct">Site 0%</div>
+  </div>
+</nav>
+
+<!-- Export Modal -->
+<div class="overlay" id="export-overlay">
+  <div class="modal">
+    <div class="modal-ttl">Export</div>
+    <div class="exp-tabs">
+      <div class="exp-tab active" id="tab-msp" onclick="switchExpTab('msp')">MS Project</div>
+      <div class="exp-tab" id="tab-report" onclick="switchExpTab('report')">Report</div>
+      <div class="exp-tab" id="tab-excel" onclick="switchExpTab('excel')">Excel</div>
+    </div>
+
+    <!-- MS Project panel -->
+    <div class="exp-panel active" id="panel-msp">
+      <div style="font-size:13px;color:var(--label2);margin-bottom:14px;line-height:1.5;">Exports all buildings as Microsoft Project XML — importable into Outbuild, MS Project, or any compatible scheduler.</div>
+      <div class="m-field"><label>Project Name</label><input class="m-input" id="exp-name" type="text" value="Westland Living — Ash St"></div>
+      <div class="m-field"><label>Project Start Date</label><input class="m-input" id="exp-start" type="date"></div>
+      <div class="m-field"><label>Include</label>
+        <select class="m-select" id="exp-scope">
+          <option value="all">All Buildings (1–20)</option>
+          <option value="selected">Selected Building Only</option>
+        </select>
+      </div>
+      <div class="m-btns">
+        <button class="m-btn m-btn-ghost" onclick="closeExportModal()">Cancel</button>
+        <button class="m-btn m-btn-primary" onclick="doExport()">Download XML</button>
+      </div>
+    </div>
+
+    <!-- Progress Report panel -->
+    <div class="exp-panel" id="panel-report">
+      <div style="font-size:13px;color:var(--label2);margin-bottom:14px;line-height:1.5;">Generates a full HTML progress report with photos — open in browser and print to PDF.</div>
+      <div class="m-field"><label>Include</label>
+        <select class="m-select" id="rep-scope">
+          <option value="all">All Buildings (1–20)</option>
+          <option value="selected">Selected Building Only</option>
+        </select>
+      </div>
+      <div class="m-field">
+        <label>Include Photos</label>
+        <select class="m-select" id="rep-photos">
+          <option value="yes">Yes — embed photos</option>
+          <option value="no">No — text only</option>
+        </select>
+      </div>
+      <div class="m-btns">
+        <button class="m-btn m-btn-ghost" onclick="closeExportModal()">Cancel</button>
+        <button class="m-btn m-btn-primary" onclick="generateReport()">Open Report</button>
+      </div>
+    </div>
+
+    <!-- Excel panel -->
+    <div class="exp-panel" id="panel-excel">
+      <div style="font-size:13px;color:var(--label2);margin-bottom:14px;line-height:1.5;">Downloads an Excel-compatible spreadsheet (.xls) with a summary sheet and full task details.</div>
+      <div class="m-field"><label>Include</label>
+        <select class="m-select" id="xl-scope">
+          <option value="all">All Buildings (1–20)</option>
+          <option value="selected">Selected Building Only</option>
+        </select>
+      </div>
+      <div class="m-btns">
+        <button class="m-btn m-btn-ghost" onclick="closeExportModal()">Cancel</button>
+        <button class="m-btn m-btn-primary" onclick="doExcelExport()">Download Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="overlay" id="confirm-overlay">
+  <div class="modal">
+    <div class="modal-ttl">Confirm Changes</div>
+    <div class="modal-sub" id="confirm-bldg-name">Building 1/B — Type B · 2 BDR</div>
+    <div style="font-size:13px;color:var(--label2);text-align:center;margin-bottom:18px;line-height:1.5;">You are about to make changes.<br>Once synced, this will update for all users.</div>
+    <div class="m-field">
+      <label>Type the word "OK" to continue</label>
+      <input class="m-input" id="confirm-input" type="text" placeholder="OK" autocomplete="off" autocorrect="off" autocapitalize="characters" oninput="onConfirmInput()">
+    </div>
+    <div class="m-btns">
+      <button class="m-btn m-btn-ghost" onclick="cancelConfirm()">Cancel</button>
+      <button class="m-btn m-btn-primary" id="confirm-proceed-btn" onclick="doConfirm()" disabled>Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo Viewer -->
+<div class="photo-viewer" id="photo-viewer" onclick="closePhotoViewer()">
+  <button class="photo-viewer-close" onclick="closePhotoViewer()">✕</button>
+  <img id="viewer-img" src="" alt="Photo" onclick="event.stopPropagation()">
+</div>
+
+<!-- Backups View -->
+<div class="backups-view" id="backups-view">
+  <div class="backups-nav">
+    <div class="backups-title">Backups</div>
+    <div style="display:flex;gap:8px;">
+      <button class="nav-btn" onclick="manualBackupAndRefresh()" style="font-size:12px;">Save Now</button>
+      <button class="nav-btn" onclick="closeBackupsView()">Done</button>
+    </div>
+  </div>
+  <div class="backups-scroll" id="backups-list"></div>
+</div>
+
+<!-- Add Task Overlay -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-ttl">New Task</div>
+    <div class="m-field"><label>Task Name</label><input class="m-input" id="m-name" type="text" placeholder="e.g. Framing Inspection"></div>
+    <div class="m-field"><label>Trade / Category</label><input class="m-input" id="m-trade" type="text" placeholder="Structural, MEP, Finishing…"></div>
+    <div class="m-field"><label>Scheduled Date</label><input class="m-input" id="m-date" type="date"></div>
+    <div class="m-field"><label>Status</label>
+      <select class="m-select" id="m-status">
+        <option value="not-started">Pending</option>
+        <option value="in-progress">In Progress</option>
+        <option value="complete">Complete</option>
+        <option value="on-hold">On Hold</option>
+      </select>
+    </div>
+    <div class="m-btns">
+      <button class="m-btn m-btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="submitTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main" id="main">
+  <div class="map-card">
+    <div class="map-meta">
+      <span class="map-meta-label">Site Plan — Overall</span>
+      <span class="map-meta-addr">Ash St at 52nd &amp; 54th Ave</span>
+    </div>
+    <svg id="site-svg" viewBox="0 0 1100 296" xmlns="http://www.w3.org/2000/svg">
+      <rect x="42" y="20" width="1016" height="254" rx="4" fill="none" stroke="#C7C7CC" stroke-width="1.2" stroke-dasharray="6,4"/>
+      <text x="550" y="13" class="map-annotation">LANE</text>
+      <text x="22" y="148" class="map-annotation-side" transform="rotate(-90,22,148)">52 AVE</text>
+      <text x="1078" y="148" class="map-annotation-side" transform="rotate(90,1078,148)">54 AVE</text>
+      <text x="550" y="287" class="map-annotation">ASH STREET</text>
+      <line x1="593" y1="26" x2="593" y2="262" stroke="#C7C7CC" stroke-width="1" stroke-dasharray="5,3"/>
+      <line x1="47" y1="151" x2="1053" y2="151" stroke="#C7C7CC" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.5"/>
+      <g id="buildings-layer"></g>
+    </svg>
+    <div class="map-hint" id="map-hint">Tap or hover a building to open tracking</div>
+  </div>
+</div>
+
+<!-- Backdrop -->
+<div class="backdrop" id="backdrop" onclick="closeSheet()"></div>
+
+<!-- Sheet -->
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-head-row1">
+      <div>
+        <div class="sheet-title" id="sh-title">Building 1/B</div>
+        <div class="sheet-sub" id="sh-sub">Type B · 2 Bedroom</div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding-top:2px;">
+        <span class="type-badge" id="sh-badge">B</span>
+        <button class="close-btn" onclick="closeSheet()">✕</button>
+      </div>
+    </div>
+    <div class="progress-row">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 58 58" width="58" height="58">
+          <circle cx="29" cy="29" r="23" fill="none" stroke="rgba(120,120,128,0.14)" stroke-width="5"/>
+          <circle cx="29" cy="29" r="23" fill="none" stroke="#007AFF" stroke-width="5" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5" id="sh-ring" transform="rotate(-90 29 29)" style="transition:stroke-dashoffset 0.6s ease;"/>
+        </svg>
+        <div class="ring-val" id="sh-ring-val">0%</div>
+      </div>
+      <div class="progress-details">
+        <div class="progress-track"><div class="progress-fill" id="sh-fill" style="width:0%"></div></div>
+        <div class="stat-chips">
+          <div class="stat-chip"><div class="stat-chip-val" id="sc-total">0</div><div class="stat-chip-lbl">Tasks</div></div>
+          <div class="stat-chip"><div class="stat-chip-val" id="sc-done" style="color:var(--green)">0</div><div class="stat-chip-lbl">Done</div></div>
+          <div class="stat-chip"><div class="stat-chip-val" id="sc-prog" style="color:var(--blue)">0</div><div class="stat-chip-lbl">Active</div></div>
+          <div class="stat-chip"><div class="stat-chip-val" id="sc-pend" style="color:var(--gray)">0</div><div class="stat-chip-lbl">Pending</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tasks-bar">
+    <span class="tasks-bar-lbl">Scheduled Tasks</span>
+    <button class="tasks-add-btn" onclick="openModal()">+ Add</button>
+  </div>
+  <div class="tasks-scroll" id="tasks-scroll"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG — set SYNC_URL to enable multi-device sync
+// e.g. 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID'
+const SYNC_URL = '';
+const SYNC_HEADERS = {}; // e.g. { 'X-Master-Key': '$2a$...' } for JSONBin
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
+const MAX_BACKUPS = 100;
+const PHOTO_MAX_PX = 800;
+const PHOTO_QUALITY = 0.65;
+
+// ── Type definitions ──────────────────────────────────────────────────────────
+const TYPES = {
+  A:{ fill:'#F2A5C0', stroke:'#D97DA0', glow:'#F2A5C0', text:'Type A · 1 BDR',  badge:'#FCEDF4', badgeText:'#B5476E' },
+  B:{ fill:'#90D4A2', stroke:'#65B07E', glow:'#90D4A2', text:'Type B · 2 BDR',  badge:'#E8F8ED', badgeText:'#2A7A48' },
+  C:{ fill:'#88BEEC', stroke:'#5A96D4', glow:'#88BEEC', text:'Type C · 2 BDR',  badge:'#EAF3FC', badgeText:'#1A5FA0' },
+  D:{ fill:'#ABABBB', stroke:'#888898', glow:'#ABABBB', text:'Type D · 1 BDR',  badge:'#F0F0F4', badgeText:'#4A4A5A' },
+  E:{ fill:'#F2B898', stroke:'#D08860', glow:'#F2B898', text:'Type E · 3 BDR',  badge:'#FDF0E8', badgeText:'#A05520' },
+  F:{ fill:'#D8D8DC', stroke:'#A8A8B0', glow:'#D8D8DC', text:'Type F · Studio', badge:'#F4F4F6', badgeText:'#5A5A68' },
+  G:{ fill:'#E6E678', stroke:'#C0C030', glow:'#E6E678', text:'Type G · 4 BDR',  badge:'#FAFAE8', badgeText:'#7A7A00' },
+  H:{ fill:'#B8B8CC', stroke:'#8888A8', glow:'#B8B8CC', text:'Type H · 3 BDR',  badge:'#F0F0F8', badgeText:'#505078' },
+  I:{ fill:'#70C4EC', stroke:'#3898D0', glow:'#70C4EC', text:'Type I · 3 BDR',  badge:'#E4F6FC', badgeText:'#0E6090' },
+  J:{ fill:'#B0C4D8', stroke:'#7898B8', glow:'#B0C4D8', text:'Type J · 2 BDR',  badge:'#EDF1F8', badgeText:'#2A4A70' },
+};
+
+// ── Building layout — viewBox 1100×296, 10px gaps ─────────────────────────────
+const BLDGS = [
+  // Corner tall buildings (span both rows)
+  { n:6,  t:'G', x:47,  y:26,  w:80, h:236 },
+  { n:16, t:'G', x:973, y:26,  w:80, h:236 },
+  // Top row (y=26 h=118)
+  { n:7,  t:'D', x:137, y:26,  w:82, h:118 },
+  { n:8,  t:'H', x:229, y:26,  w:82, h:118 },
+  { n:9,  t:'D', x:321, y:26,  w:82, h:118 },
+  { n:10, t:'C', x:413, y:26,  w:82, h:118 },
+  { n:11, t:'D', x:505, y:26,  w:82, h:118 },
+  { n:12, t:'J', x:607, y:26,  w:82, h:118 },
+  { n:13, t:'D', x:699, y:26,  w:82, h:118 },
+  { n:14, t:'I', x:791, y:26,  w:82, h:118 },
+  { n:15, t:'D', x:883, y:26,  w:82, h:118 },
+  // Bottom row (y=162 h=100), building 5 is smaller/offset
+  { n:5,  t:'F', x:137, y:176, w:56, h:86  },
+  { n:4,  t:'A', x:203, y:162, w:82, h:100 },
+  { n:3,  t:'B', x:295, y:162, w:82, h:100 },
+  { n:2,  t:'A', x:387, y:162, w:82, h:100 },
+  { n:1,  t:'B', x:479, y:162, w:82, h:100 },
+  { n:20, t:'E', x:607, y:162, w:82, h:100 },
+  { n:19, t:'B', x:699, y:162, w:82, h:100 },
+  { n:18, t:'E', x:791, y:162, w:82, h:100 },
+  { n:17, t:'B', x:883, y:162, w:82, h:100 },
+];
+
+const DEFAULT_TASKS = [
+  { name:'Site Preparation & Excavation', trade:'Civil' },
+  { name:'Foundation & Concrete',          trade:'Structural' },
+  { name:'Structural Framing',             trade:'Structural' },
+  { name:'Roof Structure & Waterproofing', trade:'Structural' },
+  { name:'Exterior Envelope & Windows',    trade:'Envelope' },
+  { name:'Mechanical Rough-in',            trade:'Mechanical' },
+  { name:'Electrical Rough-in',            trade:'Electrical' },
+  { name:'Plumbing Rough-in',              trade:'Plumbing' },
+  { name:'Insulation & Fire Stopping',     trade:'Insulation' },
+  { name:'Drywall & Interior',             trade:'Drywall' },
+  { name:'Interior Finishes & Millwork',   trade:'Finishing' },
+  { name:'Fixtures & Final MEP',           trade:'Mechanical' },
+  { name:'Final Inspections',              trade:'Inspection' },
+  { name:'Suite Handover',                 trade:'Admin' },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = loadState();
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('wl-v3');
+    if (s) {
+      const parsed = JSON.parse(s);
+      // Migrate: ensure photos exists on each task
+      Object.keys(parsed).forEach(key => {
+        if (key === '_lastModified') return;
+        const bldg = parsed[key];
+        if (bldg && bldg.tasks) {
+          bldg.tasks.forEach(t => { if (!t.photos) t.photos = []; });
+        }
+      });
+      return parsed;
+    }
+  } catch(e) { console.warn('State load error', e); }
+  return initState();
+}
+
+function initState() {
+  const s = { _lastModified: Date.now() };
+  BLDGS.forEach(b => {
+    s[b.n] = {
+      tasks: DEFAULT_TASKS.map((t, i) => ({
+        id: 't' + i, name: t.name, trade: t.trade,
+        date: '', completion: 0, status: 'not-started', notes: '', photos: []
+      }))
+    };
+  });
+  return s;
+}
+
+function save() {
+  state._lastModified = Date.now();
+  try {
+    localStorage.setItem('wl-v3', JSON.stringify(state));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      alert('Storage full. Please delete some photos to free up space.');
+    }
+  }
+}
+
+// ── Backups ───────────────────────────────────────────────────────────────────
+function loadBackups() {
+  try {
+    const b = localStorage.getItem('wl-backups');
+    if (b) return JSON.parse(b);
+  } catch(e) {}
+  return [];
+}
+
+function saveBackupsStore(arr) {
+  try { localStorage.setItem('wl-backups', JSON.stringify(arr)); } catch(e) {}
+}
+
+function createSnapshot() {
+  return {
+    ts: Date.now(),
+    date: new Date().toLocaleDateString('en-CA', { year:'numeric', month:'short', day:'numeric' }),
+    time: new Date().toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+    sitePct: getSitePct(),
+    buildings: BLDGS.map(b => ({ n: b.n, t: b.t, pct: getBldgPct(b.n) }))
+  };
+}
+
+function appendBackup(snapshot) {
+  const arr = loadBackups();
+  arr.push(snapshot); // NEVER overwrite — always append
+  // Trim oldest if over limit, keeping newest
+  if (arr.length > MAX_BACKUPS) arr.splice(0, arr.length - MAX_BACKUPS);
+  saveBackupsStore(arr);
+}
+
+function doAutoBackup() {
+  const arr = loadBackups();
+  const lastTs = arr.length ? arr[arr.length - 1].ts : 0;
+  if (Date.now() - lastTs >= BACKUP_INTERVAL_MS) {
+    appendBackup(createSnapshot());
+  }
+  // Re-check every hour
+  setTimeout(doAutoBackup, 60 * 60 * 1000);
+}
+
+function manualBackupAndRefresh() {
+  appendBackup(createSnapshot());
+  renderBackupsList();
+  // brief flash on the button
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = 'Saved!';
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+
+function renderBackupsList() {
+  const arr = loadBackups();
+  const cont = document.getElementById('backups-list');
+  cont.innerHTML = '';
+
+  if (!arr.length) {
+    cont.innerHTML = '<div class="backups-empty">No backups yet.<br>Auto-backup runs every 12 hours.<br>Tap "Save Now" to create one manually.</div>';
+    return;
+  }
+
+  // Newest first
+  [...arr].reverse().forEach(bk => {
+    const card = document.createElement('div');
+    card.className = 'backup-card';
+
+    const head = document.createElement('div');
+    head.className = 'backup-card-head';
+    head.innerHTML = `<div class="backup-time">${bk.date} &nbsp;${bk.time}</div><div class="backup-site-pct">Site ${bk.sitePct}%</div>`;
+
+    const grid = document.createElement('div');
+    grid.className = 'backup-grid';
+    (bk.buildings || []).forEach(b => {
+      const cell = document.createElement('div');
+      cell.className = 'backup-bldg-cell';
+      const c = pctToColor(b.pct);
+      cell.innerHTML = `<div class="backup-bldg-n">${b.n}/${b.t}</div><div class="backup-bldg-pct" style="color:${c}">${b.pct}%</div>`;
+      grid.appendChild(cell);
+    });
+
+    card.appendChild(head);
+    card.appendChild(grid);
+    cont.appendChild(card);
+  });
+}
+
+function openBackupsView() {
+  renderBackupsList();
+  document.getElementById('backups-view').classList.add('on');
+}
+
+function closeBackupsView() {
+  document.getElementById('backups-view').classList.remove('on');
+}
+
+function pctToColor(pct) {
+  if (pct >= 100) return 'var(--green)';
+  if (pct >= 50)  return 'var(--blue)';
+  if (pct > 0)    return 'var(--orange)';
+  return 'var(--gray)';
+}
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+let _syncStatus = 'idle';
+
+async function syncData() {
+  if (!navigator.onLine) {
+    setSyncStatus('error', 'Offline');
+    setTimeout(() => setSyncStatus('idle'), 3000);
+    return;
+  }
+
+  if (!SYNC_URL) {
+    save();
+    setSyncStatus('synced', 'Saved');
+    setTimeout(() => setSyncStatus('idle'), 2500);
+    return;
+  }
+
+  setSyncStatus('syncing', 'Syncing…');
+  try {
+    const resp = await fetch(SYNC_URL, { headers: SYNC_HEADERS });
+    if (resp.ok) {
+      const data = await resp.json();
+      const remote = data.record || data.state || data;
+      const localTs  = state._lastModified || 0;
+      const remoteTs = (remote && remote._lastModified) || 0;
+
+      if (remoteTs > localTs) {
+        // Remote newer — pull and merge
+        Object.keys(remote).forEach(k => {
+          if (k !== '_lastModified') state[k] = remote[k];
+        });
+        state._lastModified = remoteTs;
+        try { localStorage.setItem('wl-v3', JSON.stringify(state)); } catch(e){}
+        if (selNum !== null) renderSheet(selNum);
+        updateNav();
+      } else {
+        // Local newer — push
+        await fetch(SYNC_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...SYNC_HEADERS },
+          body: JSON.stringify(state)
+        });
+      }
+    } else {
+      // Endpoint exists but no record yet — push
+      await fetch(SYNC_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...SYNC_HEADERS },
+        body: JSON.stringify(state)
+      });
+    }
+    setSyncStatus('synced', 'Synced ' + new Date().toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' }));
+    setTimeout(() => setSyncStatus('idle'), 4000);
+  } catch(e) {
+    setSyncStatus('error', 'Failed');
+    setTimeout(() => setSyncStatus('idle'), 4000);
+  }
+}
+
+function setSyncStatus(status, label) {
+  _syncStatus = status;
+  const btn = document.getElementById('sync-btn');
+  if (!btn) return;
+  btn.textContent = label || 'Sync';
+  btn.classList.toggle('syncing', status === 'syncing');
+}
+
+function updateOnlineIndicator() {
+  const dot = document.getElementById('online-dot');
+  if (!dot) return;
+  const online = navigator.onLine;
+  dot.style.background = online ? 'var(--green)' : 'var(--orange)';
+  dot.title = online ? 'Online' : 'Offline — changes saved locally';
+}
+
+// ── Photos ────────────────────────────────────────────────────────────────────
+// Always search within the currently-selected building — default task IDs are
+// shared across all buildings (t0…t13) so a global search returns the wrong task.
+function findTask(taskId) {
+  if (selNum === null) return null;
+  const tasks = (state[selNum] && state[selNum].tasks) || [];
+  return tasks.find(t => t.id === taskId) || null;
+}
+
+async function addPhotos(taskId, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const task = findTask(taskId);
+  if (!task) return;
+  if (!task.photos) task.photos = [];
+
+  for (const file of files) {
+    try {
+      const dataUrl = await compressImage(file);
+      task.photos.push({
+        id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6),
+        dataUrl,
+        name: file.name,
+        ts: Date.now()
+      });
+    } catch(e) { console.warn('Photo compress error', e); }
+  }
+  input.value = '';
+  save();
+  rerenderAll();
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(PHOTO_MAX_PX / img.width, PHOTO_MAX_PX / img.height, 1);
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function delPhoto(taskId, photoId, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this photo?')) return;
+  const task = findTask(taskId);
+  if (!task) return;
+  task.photos = (task.photos || []).filter(p => p.id !== photoId);
+  save();
+  rerenderAll();
+}
+
+function viewPhoto(photoId, taskId) {
+  const task = findTask(taskId);
+  if (!task) return;
+  const photo = (task.photos || []).find(p => p.id === photoId);
+  if (!photo) return;
+  document.getElementById('viewer-img').src = photo.dataUrl;
+  document.getElementById('photo-viewer').classList.add('on');
+}
+
+function closePhotoViewer() {
+  document.getElementById('photo-viewer').classList.remove('on');
+  document.getElementById('viewer-img').src = '';
+}
+
+// ── Confirmation ──────────────────────────────────────────────────────────────
+let pendingBldgNum = null;
+
+function selectBuilding(num) {
+  pendingBldgNum = num;
+  const bldg = BLDGS.find(b => b.n === num);
+  document.getElementById('confirm-bldg-name').textContent =
+    'Building ' + num + '/' + bldg.t + ' — ' + TYPES[bldg.t].text;
+  const inp = document.getElementById('confirm-input');
+  inp.value = '';
+  inp.classList.remove('ok');
+  document.getElementById('confirm-proceed-btn').disabled = true;
+  document.getElementById('confirm-overlay').classList.add('on');
+  setTimeout(() => inp.focus(), 320);
+}
+
+function onConfirmInput() {
+  const val = document.getElementById('confirm-input').value.trim();
+  const ok = val.toUpperCase() === 'OK';
+  document.getElementById('confirm-input').classList.toggle('ok', ok);
+  document.getElementById('confirm-proceed-btn').disabled = !ok;
+}
+
+function cancelConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('on');
+  pendingBldgNum = null;
+}
+
+function doConfirm() {
+  const val = document.getElementById('confirm-input').value.trim();
+  if (val.toUpperCase() !== 'OK') return;
+  document.getElementById('confirm-overlay').classList.remove('on');
+  const num = pendingBldgNum;
+  pendingBldgNum = null;
+  openBuildingSheet(num);
+}
+
+function openBuildingSheet(num) {
+  if (selNum !== null) {
+    const prev = document.getElementById('bg-' + selNum);
+    if (prev) prev.classList.remove('selected', 'hovered');
+  }
+  selNum = num;
+  openTask = null;
+  const el = document.getElementById('bg-' + num);
+  if (el) { el.classList.remove('hovered'); el.classList.add('selected'); }
+  renderSheet(num);
+  openSheet();
+  document.getElementById('map-hint').style.opacity = '0';
+}
+
+// Westland brand colors — odd buildings yellow, even buildings grey
+function getBldgColor(n) {
+  return n % 2 === 1
+    ? { fill:'#F5BC00', stroke:'#C89A00', glow:'#F5BC00' }
+    : { fill:'#A8A8B8', stroke:'#808090', glow:'#A8A8B8' };
+}
+
+// ── Build SVG ─────────────────────────────────────────────────────────────────
+function buildSVG() {
+  const layer = document.getElementById('buildings-layer');
+  BLDGS.forEach(b => {
+    const color = getBldgColor(b.n);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'bldg-group');
+    g.setAttribute('id', 'bg-' + b.n);
+    g.setAttribute('data-n', b.n);
+    g.style.setProperty('--glow-color', color.glow);
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('class', 'bldg-rect');
+    rect.setAttribute('x', b.x); rect.setAttribute('y', b.y);
+    rect.setAttribute('width', b.w); rect.setAttribute('height', b.h);
+    rect.setAttribute('rx', 5); rect.setAttribute('ry', 5);
+    rect.setAttribute('fill', color.fill);
+    rect.setAttribute('stroke', color.stroke);
+    rect.setAttribute('stroke-width', '1.5');
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('class', 'bldg-text');
+    txt.setAttribute('x', b.x + b.w / 2);
+    txt.setAttribute('y', b.y + b.h / 2);
+    txt.textContent = String(b.n);   // number only — no "/B" type suffix
+
+    g.appendChild(rect); g.appendChild(txt);
+
+    g.addEventListener('click', () => selectBuilding(b.n));
+    g.addEventListener('pointerenter', () => { if (selNum !== b.n) g.classList.add('hovered'); });
+    g.addEventListener('pointerleave', () => g.classList.remove('hovered'));
+    g.addEventListener('touchstart', e => { e.preventDefault(); selectBuilding(b.n); }, { passive: false });
+
+    layer.appendChild(g);
+  });
+}
+
+// ── Sheet ─────────────────────────────────────────────────────────────────────
+let selNum = null;
+let openTask = null;
+
+function openSheet() {
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('backdrop').classList.add('on');
+  if (window.innerWidth >= 768 && window.innerHeight < window.innerWidth) {
+    document.getElementById('main').classList.add('shifted');
+  }
+}
+
+function closeSheet() {
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('on');
+  document.getElementById('main').classList.remove('shifted');
+  if (selNum !== null) {
+    const el = document.getElementById('bg-' + selNum);
+    if (el) el.classList.remove('selected', 'hovered');
+  }
+  selNum = null;
+  openTask = null;
+  document.getElementById('map-hint').style.opacity = '1';
+}
+
+function getBldgPct(num) {
+  const tasks = (state[num] && state[num].tasks) || [];
+  if (!tasks.length) return 0;
+  return Math.round(tasks.reduce((a, t) => a + (t.completion || 0), 0) / tasks.length);
+}
+
+function getSitePct() {
+  const total = BLDGS.reduce((a, b) => a + getBldgPct(b.n), 0);
+  return Math.round(total / BLDGS.length);
+}
+
+function updateNav() {
+  document.getElementById('nav-pct').textContent = 'Site ' + getSitePct() + '%';
+}
+
+function renderSheet(num) {
+  const bldg = BLDGS.find(b => b.n === num);
+  const type = TYPES[bldg.t];
+  const tasks = (state[num] && state[num].tasks) || [];
+  const pct = getBldgPct(num);
+
+  document.getElementById('sh-title').textContent = 'Building ' + num + '/' + bldg.t;
+  document.getElementById('sh-sub').textContent = type.text;
+
+  const badge = document.getElementById('sh-badge');
+  badge.textContent = 'TYPE ' + bldg.t;
+  badge.style.background = type.badge;
+  badge.style.color = type.badgeText;
+
+  const circumference = 144.51;
+  document.getElementById('sh-ring').setAttribute('stroke-dashoffset', circumference * (1 - pct / 100));
+  document.getElementById('sh-ring').setAttribute('stroke', pct >= 100 ? 'var(--green)' : 'var(--blue)');
+  document.getElementById('sh-ring-val').textContent = pct + '%';
+  document.getElementById('sh-fill').style.width = pct + '%';
+  document.getElementById('sh-fill').style.background = pct >= 100 ? 'var(--green)' : 'var(--blue)';
+
+  document.getElementById('sc-total').textContent = tasks.length;
+  document.getElementById('sc-done').textContent  = tasks.filter(t => t.status === 'complete').length;
+  document.getElementById('sc-prog').textContent  = tasks.filter(t => t.status === 'in-progress').length;
+  document.getElementById('sc-pend').textContent  = tasks.filter(t => t.status === 'not-started').length;
+
+  renderTasks(tasks, type);
+}
+
+function statusIcon(s)  { return { 'not-started':'·', 'in-progress':'▶', 'complete':'✓', 'on-hold':'⏸' }[s] || '·'; }
+function statusColor(s) { return { 'not-started':'var(--gray)', 'in-progress':'var(--blue)', 'complete':'var(--green)', 'on-hold':'var(--orange)' }[s]; }
+
+function escH(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTasks(tasks, type) {
+  const cont = document.getElementById('tasks-scroll');
+  cont.innerHTML = '';
+
+  tasks.forEach(task => {
+    const isOpen = openTask === task.id;
+    const cell = document.createElement('div');
+    cell.className = 'task-cell' + (isOpen ? ' open' : '');
+    cell.id = 'tc-' + task.id;
+
+    const sliderBg = `linear-gradient(to right, ${type.fill} ${task.completion}%, rgba(120,120,128,0.14) ${task.completion}%)`;
+    const pctColor = task.completion >= 100 ? 'var(--green)' : task.completion > 0 ? 'var(--blue)' : 'var(--label3)';
+    const photos = task.photos || [];
+    const photoCountHtml = photos.length
+      ? `<span class="photo-count-badge">${photos.length} photo${photos.length > 1 ? 's' : ''}</span>`
+      : '';
+
+    const photosGridHtml = photos.map(p =>
+      `<div class="photo-thumb" onclick="viewPhoto('${escH(p.id)}','${escH(task.id)}');event.stopPropagation()">
+         <img src="${p.dataUrl}" alt="photo" loading="lazy">
+         <button class="photo-del" onclick="delPhoto('${escH(task.id)}','${escH(p.id)}',event)">✕</button>
+       </div>`
+    ).join('');
+
+    cell.innerHTML = `
+      <div class="task-row" onclick="toggleTask('${escH(task.id)}')">
+        <div class="task-icon" style="background:${statusColor(task.status)}">${statusIcon(task.status)}</div>
+        <div class="task-info">
+          <div class="task-name">${escH(task.name)}</div>
+          <div class="task-meta-txt">${escH(task.trade)}${task.date ? ' · ' + fmtDate(task.date) : ''}${photoCountHtml}</div>
+        </div>
+        <div class="task-right">
+          <div class="task-bar"><div class="task-bar-fill" style="width:${task.completion}%;background:${type.fill}"></div></div>
+          <div class="task-pct" style="color:${pctColor}">${task.completion}%</div>
+          <div class="task-chevron">›</div>
+        </div>
+      </div>
+      <div class="task-detail">
+        <span class="det-label">Completion</span>
+        <div class="slider-row">
+          <input type="range" min="0" max="100" value="${task.completion}"
+            style="background:${sliderBg}"
+            oninput="onSlider('${escH(task.id)}',this)"
+            onclick="event.stopPropagation()">
+          <div class="slider-pct" id="sp-${escH(task.id)}">${task.completion}%</div>
+        </div>
+        <span class="det-label">Status</span>
+        <div class="status-row">
+          ${[['not-started','s-ns','Pending'],['in-progress','s-ip','In Progress'],['complete','s-done','Complete'],['on-hold','s-hold','On Hold']]
+            .map(([val,cls,lbl]) => `<div class="s-chip ${cls}${task.status===val?' active':''}" onclick="onStatus('${escH(task.id)}','${val}',event)">${lbl}</div>`)
+            .join('')}
+        </div>
+        <span class="det-label" style="margin-top:10px;display:block">Notes</span>
+        <textarea class="task-notes" rows="2" placeholder="Add a note…"
+          oninput="onNotes('${escH(task.id)}',this.value)"
+          onclick="event.stopPropagation()">${escH(task.notes)}</textarea>
+        <span class="det-label" style="margin-top:10px;display:block">Photos</span>
+        <div class="photos-grid">${photosGridHtml}</div>
+        <label class="photo-add-label" onclick="event.stopPropagation()">
+          + Add Photo
+          <input type="file" accept="image/*" capture="environment" multiple
+            onchange="addPhotos('${escH(task.id)}',this)"
+            onclick="event.stopPropagation()">
+        </label>
+      </div>
+    `;
+    cont.appendChild(cell);
+  });
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('en-CA', { month:'short', day:'numeric' }); }
+  catch(e) { return d; }
+}
+
+// ── Task interactions ─────────────────────────────────────────────────────────
+function toggleTask(id) {
+  openTask = openTask === id ? null : id;
+  const bldg = BLDGS.find(b => b.n === selNum);
+  if (bldg) renderTasks(state[selNum].tasks, TYPES[bldg.t]);
+  if (openTask) {
+    setTimeout(() => {
+      const el = document.getElementById('tc-' + openTask);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, 80);
+  }
+}
+
+function onSlider(id, input) {
+  const pct = parseInt(input.value);
+  const task = findTask(id);
+  if (!task) return;
+  task.completion = pct;
+  if (pct === 100) task.status = 'complete';
+  else if (pct > 0 && task.status === 'not-started') task.status = 'in-progress';
+  else if (pct === 0 && task.status !== 'on-hold') task.status = 'not-started';
+
+  const type = TYPES[BLDGS.find(b => b.n === selNum).t];
+  input.style.background = `linear-gradient(to right,${type.fill} ${pct}%,rgba(120,120,128,0.14) ${pct}%)`;
+  const sp = document.getElementById('sp-' + id);
+  if (sp) sp.textContent = pct + '%';
+  save(); refreshSheet();
+}
+
+function onStatus(id, status, e) {
+  e.stopPropagation();
+  const task = findTask(id);
+  if (!task) return;
+  task.status = status;
+  if (status === 'complete' && task.completion < 100) task.completion = 100;
+  if (status === 'not-started') task.completion = 0;
+  save(); rerenderAll();
+}
+
+function onNotes(id, val) {
+  const task = findTask(id);
+  if (task) { task.notes = val; save(); }
+}
+
+function refreshSheet() {
+  if (selNum === null) return;
+  const pct = getBldgPct(selNum);
+  const c = 144.51;
+  document.getElementById('sh-ring').setAttribute('stroke-dashoffset', c * (1 - pct / 100));
+  document.getElementById('sh-ring').setAttribute('stroke', pct >= 100 ? 'var(--green)' : 'var(--blue)');
+  document.getElementById('sh-ring-val').textContent = pct + '%';
+  document.getElementById('sh-fill').style.width = pct + '%';
+  document.getElementById('sh-fill').style.background = pct >= 100 ? 'var(--green)' : 'var(--blue)';
+  const tasks = state[selNum].tasks;
+  document.getElementById('sc-total').textContent = tasks.length;
+  document.getElementById('sc-done').textContent  = tasks.filter(t => t.status === 'complete').length;
+  document.getElementById('sc-prog').textContent  = tasks.filter(t => t.status === 'in-progress').length;
+  document.getElementById('sc-pend').textContent  = tasks.filter(t => t.status === 'not-started').length;
+  updateNav();
+}
+
+function rerenderAll() {
+  if (selNum === null) return;
+  const bldg = BLDGS.find(b => b.n === selNum);
+  if (bldg) renderTasks(state[selNum].tasks, TYPES[bldg.t]);
+  refreshSheet();
+}
+
+// ── Add Task Modal ────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('m-name').focus();
+}
+function closeModal() {
+  document.getElementById('overlay').classList.remove('on');
+  ['m-name','m-trade','m-date'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('m-status').value = 'not-started';
+}
+function submitTask() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) return;
+  const task = {
+    id: 't' + Date.now(),
+    name,
+    trade: document.getElementById('m-trade').value.trim(),
+    date:  document.getElementById('m-date').value,
+    completion: document.getElementById('m-status').value === 'complete' ? 100 : 0,
+    status: document.getElementById('m-status').value,
+    notes: '',
+    photos: []
+  };
+  state[selNum].tasks.push(task);
+  save(); closeModal(); rerenderAll();
+}
+
+// ── Export Modal ──────────────────────────────────────────────────────────────
+function openExportModal() {
+  if (!document.getElementById('exp-start').value) {
+    document.getElementById('exp-start').value = new Date().toISOString().split('T')[0];
+  }
+  document.getElementById('exp-scope').querySelector('option[value="selected"]').disabled = selNum === null;
+  document.getElementById('rep-scope').querySelector('option[value="selected"]').disabled = selNum === null;
+  document.getElementById('xl-scope').querySelector('option[value="selected"]').disabled = selNum === null;
+  document.getElementById('export-overlay').classList.add('on');
+}
+function closeExportModal() { document.getElementById('export-overlay').classList.remove('on'); }
+
+function switchExpTab(tab) {
+  ['msp','report','excel'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+// ── MS Project Export ─────────────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+function toMSPDate(date) { return date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) + 'T00:00:00'; }
+function statusToMSP(s) { return { 'not-started':0, 'in-progress':1, 'complete':2, 'on-hold':3 }[s] || 0; }
+
+function escXML(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+function doExport() {
+  const projName  = document.getElementById('exp-name').value || 'Westland Living';
+  const startStr  = document.getElementById('exp-start').value;
+  const startDate = startStr ? new Date(startStr + 'T00:00:00') : new Date();
+  const scope     = document.getElementById('exp-scope').value;
+  const bldgsToExport = scope === 'selected' && selNum !== null ? BLDGS.filter(b => b.n === selNum) : BLDGS;
+
+  let uid = 1, taskUID = 1;
+  const tasks = [], resources = [], assignments = [], tradesSeen = {};
+
+  bldgsToExport.forEach((bldg, bi) => {
+    const bldgTasks = (state[bldg.n] && state[bldg.n].tasks) || [];
+    const bldgStart = addDays(startDate, bi * 30);
+    const bldgEnd   = addDays(bldgStart, 180);
+    const summaryUID = taskUID++;
+    tasks.push({ uid:summaryUID, id:summaryUID, name:`Building ${bldg.n}/${bldg.t}`, summary:true, pct:getBldgPct(bldg.n), start:toMSPDate(bldgStart), finish:toMSPDate(bldgEnd), duration:'PT180DT0H0M0S', outline:1, outlineNum:String(summaryUID), wbs:String(bi+1), notes:TYPES[bldg.t].text });
+    bldgTasks.forEach((t, ti) => {
+      const childUID = taskUID++, taskDur = 14;
+      const taskStart = addDays(bldgStart, ti * 10);
+      const taskEnd   = addDays(taskStart, taskDur);
+      tasks.push({ uid:childUID, id:childUID, name:t.name, summary:false, pct:t.completion, start:t.date?toMSPDate(new Date(t.date+'T00:00:00')):toMSPDate(taskStart), finish:toMSPDate(taskEnd), duration:`PT${taskDur}DT0H0M0S`, outline:2, outlineNum:`${summaryUID}.${ti+1}`, wbs:`${bi+1}.${ti+1}`, status:statusToMSP(t.status), notes:t.notes||'', parentUID:summaryUID, trade:t.trade });
+      if (t.trade && !tradesSeen[t.trade]) { tradesSeen[t.trade] = Object.keys(tradesSeen).length + 1; resources.push({ uid:tradesSeen[t.trade], name:t.trade }); }
+      if (t.trade && tradesSeen[t.trade]) assignments.push({ uid:uid++, taskUID:childUID, resUID:tradesSeen[t.trade], units:1, pct:t.completion });
+    });
+  });
+
+  const now = toMSPDate(new Date());
+  const projFinish = toMSPDate(addDays(startDate, bldgsToExport.length * 30 + 180));
+  let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>${escXML(projName)}</Name><Company>Westland Living</Company><Manager>Westland Project Team</Manager>
+  <StartDate>${toMSPDate(startDate)}</StartDate><FinishDate>${projFinish}</FinishDate>
+  <CreationDate>${now}</CreationDate><LastSaved>${now}</LastSaved>
+  <CalendarUID>1</CalendarUID>
+  <Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar></Calendar></Calendars>
+  <Tasks>
+    <Task><UID>0</UID><ID>0</ID><Name>${escXML(projName)}</Name><Type>1</Type><IsNull>0</IsNull><WBS>0</WBS><OutlineNumber>0</OutlineNumber><OutlineLevel>0</OutlineLevel><Priority>500</Priority><Start>${toMSPDate(startDate)}</Start><Finish>${projFinish}</Finish><Duration>PT365DT0H0M0S</Duration><PercentComplete>0</PercentComplete><Summary>1</Summary><CalendarUID>-1</CalendarUID></Task>
+`;
+  tasks.forEach(t => {
+    xml += `    <Task><UID>${t.uid}</UID><ID>${t.id}</ID><Name>${escXML(t.name)}</Name><Type>0</Type><IsNull>0</IsNull><WBS>${t.wbs}</WBS><OutlineNumber>${t.outlineNum}</OutlineNumber><OutlineLevel>${t.outline}</OutlineLevel><Priority>500</Priority><Start>${t.start}</Start><Finish>${t.finish}</Finish><Duration>${t.duration}</Duration><PercentComplete>${t.pct}</PercentComplete><Summary>${t.summary?1:0}</Summary><CalendarUID>-1</CalendarUID>${t.notes?`<Notes>${escXML(t.notes)}</Notes>`:''}</Task>\n`;
+  });
+  xml += `  </Tasks>\n  <Resources>\n`;
+  resources.forEach(r => { xml += `    <Resource><UID>${r.uid}</UID><ID>${r.uid}</ID><Name>${escXML(r.name)}</Name><Type>1</Type><IsNull>0</IsNull><Initials>${r.name.charAt(0)}</Initials><CalendarUID>-1</CalendarUID><StandardRate>0</StandardRate><OvertimeRate>0</OvertimeRate></Resource>\n`; });
+  xml += `  </Resources>\n  <Assignments>\n`;
+  assignments.forEach(a => { xml += `    <Assignment><UID>${a.uid}</UID><TaskUID>${a.taskUID}</TaskUID><ResourceUID>${a.resUID}</ResourceUID><PercentWorkComplete>${a.pct}</PercentWorkComplete><Units>${a.units}</Units></Assignment>\n`; });
+  xml += `  </Assignments>\n</Project>`;
+
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = (projName.replace(/[^a-zA-Z0-9\s-]/g,'').trim().replace(/\s+/g,'-')) + '-MSProject.xml';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeExportModal();
+}
+
+// ── Progress Report Export ────────────────────────────────────────────────────
+function generateReport() {
+  const scope  = document.getElementById('rep-scope').value;
+  const withPhotos = document.getElementById('rep-photos').value === 'yes';
+  const bldgsToReport = scope === 'selected' && selNum !== null ? BLDGS.filter(b => b.n === selNum) : BLDGS;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-CA', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' });
+  const sitePct = getSitePct();
+
+  const statusLabel = s => ({ 'not-started':'Pending', 'in-progress':'In Progress', 'complete':'Complete', 'on-hold':'On Hold' }[s] || s);
+  const statusColor = s => ({ 'not-started':'#8E8E93', 'in-progress':'#007AFF', 'complete':'#34C759', 'on-hold':'#FF9500' }[s] || '#8E8E93');
+
+  let bldgHTML = '';
+  bldgsToReport.forEach(bldg => {
+    const tasks = (state[bldg.n] && state[bldg.n].tasks) || [];
+    const pct   = getBldgPct(bldg.n);
+    const type  = TYPES[bldg.t];
+    const doneCount = tasks.filter(t => t.status === 'complete').length;
+    const progCount = tasks.filter(t => t.status === 'in-progress').length;
+
+    let tasksHTML = '';
+    tasks.forEach(t => {
+      const photos = (t.photos || []);
+      let photosHTML = '';
+      if (withPhotos && photos.length) {
+        photosHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">` +
+          photos.map(p => `<img src="${p.dataUrl}" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #e0e0e0;" alt="photo">`).join('') +
+          `</div>`;
+      }
+      tasksHTML += `
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;font-weight:500;">${escXML(t.name)}</td>
+          <td style="padding:10px 12px;font-size:12px;color:#666;">${escXML(t.trade)}</td>
+          <td style="padding:10px 12px;"><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor(t.status)}22;color:${statusColor(t.status)};">${statusLabel(t.status)}</span></td>
+          <td style="padding:10px 12px;text-align:center;font-weight:700;font-size:13px;color:${t.completion>=100?'#34C759':t.completion>0?'#007AFF':'#8E8E93'}">${t.completion}%</td>
+          <td style="padding:10px 12px;font-size:12px;color:#555;">${escXML(t.notes || '—')}</td>
+        </tr>
+        ${photosHTML ? `<tr><td colspan="5" style="padding:4px 12px 14px;">${photosHTML}</td></tr>` : ''}
+      `;
+    });
+
+    bldgHTML += `
+      <div style="margin-bottom:32px;page-break-inside:avoid;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:${type.fill};border-radius:10px 10px 0 0;border:1px solid ${type.stroke};">
+          <div>
+            <div style="font-size:18px;font-weight:700;">Building ${bldg.n}/${bldg.t}</div>
+            <div style="font-size:13px;opacity:0.75;margin-top:2px;">${type.text}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:28px;font-weight:800;color:${pct>=100?'#34C759':pct>0?'#007AFF':'#555'}">${pct}%</div>
+            <div style="font-size:11px;opacity:0.7;">${doneCount} done · ${progCount} active · ${tasks.length - doneCount - progCount} pending</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;background:white;">
+          <thead>
+            <tr style="background:#f8f8f8;">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e0e0e0;">Task</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e0e0e0;">Trade</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e0e0e0;">Status</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e0e0e0;">%</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e0e0e0;">Notes</th>
+            </tr>
+          </thead>
+          <tbody>${tasksHTML}</tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  // Summary table
+  const summaryRows = bldgsToReport.map(b => {
+    const pct = getBldgPct(b.n);
+    const barW = pct + '%';
+    return `<tr>
+      <td style="padding:8px 12px;font-weight:600;font-size:13px;">Bldg ${b.n}/${b.t}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#666;">${TYPES[b.t].text}</td>
+      <td style="padding:8px 12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW};background:${pct>=100?'#34C759':pct>0?'#007AFF':'#e0e0e0'};border-radius:3px;"></div></div>
+          <span style="font-size:13px;font-weight:700;min-width:36px;text-align:right;color:${pct>=100?'#34C759':pct>0?'#007AFF':'#aaa'}">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Progress Report — Westland Living</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; background: #f5f5f7; margin: 0; padding: 32px 24px; color: #1c1c1e; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .report-wrap { max-width: 900px; margin: 0 auto; }
+  @media print { body { background: white; padding: 0; } }
+</style>
+</head>
+<body>
+<div class="report-wrap">
+  <!-- Header -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #1c1c1e;">
+    <div>
+      <div style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Westland Living</div>
+      <div style="font-size:14px;color:#666;margin-top:4px;">6818 &amp; 6988 Ash St, Vancouver — Site Progress Report</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:13px;color:#666;">${dateStr}</div>
+      <div style="font-size:13px;color:#666;">${timeStr}</div>
+    </div>
+  </div>
+
+  <!-- Overall Summary -->
+  <div style="display:flex;gap:16px;margin-bottom:28px;">
+    <div style="flex:1;background:white;border-radius:12px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Overall Site</div>
+      <div style="font-size:40px;font-weight:800;color:${sitePct>=100?'#34C759':sitePct>0?'#007AFF':'#555'}">${sitePct}%</div>
+      <div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-top:10px;"><div style="height:100%;width:${sitePct}%;background:${sitePct>=100?'#34C759':'#007AFF'};border-radius:4px;"></div></div>
+    </div>
+    <div style="flex:1;background:white;border-radius:12px;padding:18px 20px;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Buildings Summary</div>
+      <table style="width:100%;border-collapse:collapse;">${summaryRows}</table>
+    </div>
+  </div>
+
+  <!-- Building Detail -->
+  ${bldgHTML}
+
+  <div style="text-align:center;font-size:11px;color:#aaa;margin-top:40px;padding-top:16px;border-top:1px solid #e0e0e0;">
+    Generated by Westland Living Site Tracker · ${dateStr} ${timeStr}
+  </div>
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    // Fallback: download as file
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = 'WestlandLiving-ProgressReport-' + now.toISOString().split('T')[0] + '.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  closeExportModal();
+}
+
+// ── Excel Export ─────────────────────────────────────────────────────────────
+function statusLabel(s) {
+  return { 'not-started':'Pending', 'in-progress':'In Progress', 'complete':'Complete', 'on-hold':'On Hold' }[s] || s;
+}
+
+function doExcelExport() {
+  const scope = document.getElementById('xl-scope').value;
+  const bldgsToExport = scope === 'selected' && selNum !== null ? BLDGS.filter(b => b.n === selNum) : BLDGS;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-CA');
+
+  // Build Excel-compatible HTML (.xls)
+  const th = (s, bg) => `<td style="background:${bg||'#2C2C2E'};color:white;font-weight:bold;padding:6px 10px;border:1px solid #555;">${escXML(s)}</td>`;
+  const td = (s, extra) => `<td style="padding:5px 10px;border:1px solid #ddd;${extra||''}">${escXML(String(s||''))}</td>`;
+
+  let summaryRows = bldgsToExport.map(b => {
+    const pct = getBldgPct(b.n);
+    const tasks = (state[b.n] && state[b.n].tasks) || [];
+    const done = tasks.filter(t => t.status==='complete').length;
+    const prog = tasks.filter(t => t.status==='in-progress').length;
+    return `<tr>
+      ${td('Building ' + b.n)}
+      ${td(TYPES[b.t].text)}
+      ${td(pct + '%', 'font-weight:bold;color:' + (pct>=100?'#34C759':pct>0?'#007AFF':'#888'))}
+      ${td(done)}${td(prog)}${td(tasks.length - done - prog)}${td(tasks.length)}
+    </tr>`;
+  }).join('');
+
+  let detailRows = '';
+  bldgsToExport.forEach(b => {
+    const tasks = (state[b.n] && state[b.n].tasks) || [];
+    tasks.forEach(t => {
+      detailRows += `<tr>
+        ${td('Building ' + b.n)}
+        ${td(t.name)}
+        ${td(t.trade)}
+        ${td(t.date || '')}
+        ${td(t.completion + '%')}
+        ${td(statusLabel(t.status))}
+        ${td(t.notes || '')}
+        ${td((t.photos || []).length + ' photo(s)')}
+      </tr>`;
+    });
+  });
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<style>table{border-collapse:collapse;}body{font-family:Arial,sans-serif;font-size:12px;}</style>
+</head><body>
+<h2 style="font-family:Arial">Revive Belford — Site Progress</h2>
+<p style="font-family:Arial;color:#666">6818 &amp; 6988 Ash St, Vancouver &nbsp;|&nbsp; Generated: ${dateStr} &nbsp;|&nbsp; Overall: ${getSitePct()}%</p>
+<br>
+<h3 style="font-family:Arial">Building Summary</h3>
+<table>
+<tr>${th('Building')}${th('Type')}${th('Overall %')}${th('Done')}${th('Active')}${th('Pending')}${th('Total Tasks')}</tr>
+${summaryRows}
+</table>
+<br><br>
+<h3 style="font-family:Arial">Task Details</h3>
+<table>
+<tr>${th('Building')}${th('Task')}${th('Trade')}${th('Date')}${th('Completion')}${th('Status')}${th('Notes')}${th('Photos')}</tr>
+${detailRows}
+</table>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'ReviveBelford-' + now.toISOString().split('T')[0] + '.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeExportModal();
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('overlay').classList.contains('on'))         closeModal();
+    else if (document.getElementById('confirm-overlay').classList.contains('on')) cancelConfirm();
+    else if (document.getElementById('export-overlay').classList.contains('on'))  closeExportModal();
+    else if (document.getElementById('photo-viewer').classList.contains('on'))    closePhotoViewer();
+    else if (document.getElementById('backups-view').classList.contains('on'))    closeBackupsView();
+    else closeSheet();
+  }
+  if (e.key === 'Enter' && document.getElementById('confirm-overlay').classList.contains('on')) {
+    if (!document.getElementById('confirm-proceed-btn').disabled) doConfirm();
+  }
+});
+
+document.getElementById('overlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('export-overlay').addEventListener('click', function(e) { if (e.target === this) closeExportModal(); });
+document.getElementById('confirm-overlay').addEventListener('click', function(e) { if (e.target === this) cancelConfirm(); });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildSVG();
+updateNav();
+updateOnlineIndicator();
+doAutoBackup();
+
+window.addEventListener('online',  () => { updateOnlineIndicator(); syncData(); });
+window.addEventListener('offline', () => { updateOnlineIndicator(); });
+</script>
+</body>
+</html>
