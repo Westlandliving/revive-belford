@@ -491,10 +491,9 @@ textarea.task-notes::placeholder { color:var(--label3); }
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIG — set SYNC_URL to enable multi-device sync
-// e.g. 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID'
-const SYNC_URL = '';
-const SYNC_HEADERS = {}; // e.g. { 'X-Master-Key': '$2a$...' } for JSONBin
+// CONFIG — Firebase Realtime Database (REST API)
+const SYNC_URL = 'https://revive-460a0-default-rtdb.firebaseio.com/state.json';
+const SYNC_HEADERS = {};
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -730,7 +729,7 @@ async function syncData() {
     const resp = await fetch(SYNC_URL, { headers: SYNC_HEADERS });
     if (resp.ok) {
       const data = await resp.json();
-      const remote = data.record || data.state || data;
+      const remote = data ? (data.record || data.state || data) : null;
       const localTs  = state._lastModified || 0;
       const remoteTs = (remote && remote._lastModified) || 0;
 
